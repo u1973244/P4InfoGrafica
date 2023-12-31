@@ -72,7 +72,7 @@ initWebGL();
 
 var Textures={
     data: {
-        zombie: new Texture("Textures/ZombieA.png",gl),
+        zombie: new Texture("Textures/zombieA.png",gl),
         grass: new Texture("Textures/grass.jpg",gl),
         leaves: new Texture("Textures/leaves.jpg",gl),
         rock: new Texture("Textures/rock.jpg",gl),
