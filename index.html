@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+
+    <meta charset="utf-8">
+    
+    <title> Zombie defense </title>
+    
+    <style type="text/css">
+      body {
+      margin: 0;
+      }
+      canvas {border: 1px solid black;}
+      #punter {
+      position: absolute;
+      width: 7px;
+      height: 7px;
+      background-color: rgb(196, 196, 196);
+      border-radius: 50%;
+      border-style:solid;
+      border-width: 1px;
+      border-color: rgb(66, 65, 65);
+      pointer-events: none;
+      display: none;
+      }
+    </style>
+
+    <script id="myVertexShader" 
+          type="x-shader/x-vertex">#version 300 es
+
+
+
+      uniform mat4 projectionMatrix;
+      uniform mat4 modelViewMatrix;
+
+      uniform   mat3 normalMatrix;
+
+      in vec2 VertexTexcoords;
+      in vec3 VertexPosition;
+      
+      in vec3 VertexNormal;
+      out vec3 N, ec;
+      out vec2 texCoords;
+
+      void main () {
+
+        N = normalize (normalMatrix * VertexNormal);
+        vec4 ecPosition = modelViewMatrix * vec4 (VertexPosition , 1.0);
+        ec = vec3(ecPosition);
+        gl_Position = projectionMatrix * ecPosition;
+        texCoords       = VertexTexcoords;
+
+      }
+      
+    </script>
+    
+    <script id="myFragmentShader" 
+          type="x-shader/x-fragment">#version 300 es
+          
+      precision mediump float;
+
+      #define MAX_LIGHTS 10
+
+
+      //Pel que he vist no és posible usar arrays d'structs així que lo millor serà guardar els diferents atributs de les llums en un mateix array, i cada 4 posicions serà una nova llum.
+      struct LightData {
+        vec3 Position; // Posición en coordenadas del ojo
+        vec3 La;       // Ambiente
+        vec3 Ld;       // Difusa
+        vec3 Ls;       // Especular
+      }; //no faig servir el struct pero el deixo per tenir de referencia l'ordre dels camps al array lights
+
+      uniform vec3 Lights[ MAX_LIGHTS*4 ]; //4 components té cada llum
+      uniform int nLights;
+
+      struct MaterialData {
+        vec3 Ka;       // Ambiente
+        vec3 Kd;       // Difusa
+        vec3 Ks;       // Especular
+        float alpha;   // Brillo
+      };
+
+      uniform MaterialData Material;
+
+      uniform int Procedural;
+
+      uniform sampler2D myTexture;
+      uniform float     repetition;
+      
+      in  vec2 texCoords;
+
+
+
+
+
+      vec4 permute(vec4 x)       { return mod(((x*34.0)+1.0)*x, 289.0); }
+      vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
+      
+      float snoise(vec3 v) {
+        
+        const vec2  C = vec2(1.0/6.0, 1.0/3.0) ;
+        const vec4  D = vec4(0.0, 0.5, 1.0, 2.0);
+        
+        // First corner
+        vec3 i  = floor(v + dot(v, C.yyy) );
+        vec3 x0 =   v - i + dot(i, C.xxx) ;
+        
+        // Other corners
+        vec3 g = step(x0.yzx, x0.xyz);
+        vec3 l = 1.0 - g;
+        vec3 i1 = min( g.xyz, l.zxy );
+        vec3 i2 = max( g.xyz, l.zxy );
+        
+        //  x0 = x0 - 0. + 0.0 * C
+        vec3 x1 = x0 - i1 + 1.0 * C.xxx;
+        vec3 x2 = x0 - i2 + 2.0 * C.xxx;
+        vec3 x3 = x0 - 1. + 3.0 * C.xxx;
+        
+        // Permutations
+        i = mod(i, 289.0 );
+        vec4 p = permute( permute( permute( i.z + vec4(0.0, i1.z, i2.z, 1.0 ))
+                                          + i.y + vec4(0.0, i1.y, i2.y, 1.0 ))
+                                          + i.x + vec4(0.0, i1.x, i2.x, 1.0 ));
+                         
+        // Gradients
+        // ( N*N points uniformly over a square, mapped onto an octahedron.)
+        float n_ = 1.0/7.0; // N=7
+        vec3  ns = n_ * D.wyz - D.xzx;
+        vec4 j = p - 49.0 * floor(p * ns.z *ns.z);  //  mod(p,N*N)
+        vec4 x_ = floor(j * ns.z);
+        vec4 y_ = floor(j - 7.0 * x_ );    // mod(j,N)
+        vec4 x = x_ *ns.x + ns.yyyy;
+        vec4 y = y_ *ns.x + ns.yyyy;
+        vec4 h = 1.0 - abs(x) - abs(y);
+        vec4 b0 = vec4( x.xy, y.xy );
+        vec4 b1 = vec4( x.zw, y.zw );
+        //vec4 s0 = vec4(lessThan(b0,0.0))*2.0 - 1.0;
+        //vec4 s1 = vec4(lessThan(b1,0.0))*2.0 - 1.0;
+        vec4 s0 = floor(b0)*2.0 + 1.0;
+        vec4 s1 = floor(b1)*2.0 + 1.0;
+        vec4 sh = -step(h, vec4(0.0));
+        vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy ;
+        vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww ;
+        vec3 p0 = vec3(a0.xy,h.x);
+        vec3 p1 = vec3(a0.zw,h.y);
+        vec3 p2 = vec3(a1.xy,h.z);
+        vec3 p3 = vec3(a1.zw,h.w);
+         
+        //Normalise gradients
+        vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));
+        p0 *= norm.x;
+        p1 *= norm.y;
+        p2 *= norm.z;
+        p3 *= norm.w;
+         
+        // Mix final noise value
+        vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
+        m = m * m;
+        return 42.0 * dot( m*m, vec4( dot(p0,x0), dot(p1,x1),dot(p2,x2), dot(p3,x3) ) );
+                                                      
+      }
+
+
+
+
+
+      vec3 phong(vec3 N, vec3 V, vec3 L, vec3 La, vec3 Ld, vec3 Ls) {
+        vec3 ambient = Material.Ka * La;
+        vec3 diffuse = vec3(0.0);
+        vec3 specular = vec3(0.0);
+    
+        float NdotL = dot(N, L);
+    
+        if (NdotL > 0.0) {
+            vec3 R = reflect(-L, N);
+            float RdotV_n = pow(max(0.0, dot(R, V)), Material.alpha);
+    
+            diffuse = NdotL * (Ld * Material.Kd);
+            specular = RdotV_n * (Ls * Material.Ks);
+        }
+        return (ambient + diffuse + specular);
+      }
+
+
+      in vec3 N, ec;
+      out vec4 fragmentColor;
+      
+      void main ( ) {
+        if(Procedural==1){//faig que no afecti la llum ja que és el cel i no té gaire sentit que l'ilumini un fanal
+          
+          vec3 aux=vec3 (texCoords,0.0)*10.0;
+
+          float s     = snoise( aux) * 0.5 + 0.5;
+          vec3  newKd = mix (vec3(0.15,0.15,0.35), vec3(0.1,0.05,0.05), s);
+
+          fragmentColor = vec4( newKd, 1.0);
+        }
+        else{
+          vec3 result = vec3(0.0);
+          vec3 V = normalize (-ec);
+  
+          for (int i = 0; i < nLights*4; i+=4) { // recorro cada llum. i=posicio, i+1=La, i+2=Ld, i+3=Ls
+              vec3 L = normalize ( Lights[i] - ec);
+              result += phong(N, V, L, Lights[i+1],Lights[i+2],Lights[i+3]);
+          }
+  
+          fragmentColor= texture(myTexture, texCoords * repetition)  * vec4 (result, 1.0) * 1.6;
+        }
+
+
+      }
+      
+    </script>
+
+  </head>
+  
+  <body>
+
+    <h1>Liam Viader Molina - u1973244</h1>
+    <h2 id="infoMessage">Click canvas to unlock movement!!!</h2>
+    <div style="width: 800;">
+      <div id="punter" style="position: absolute; margin-left: 400px; margin-top: 400px; display: none;"></div>
+      <canvas id="myCanvas" width="800" height="800" >
+        El Navegador no soporta HTML5
+      </canvas>
+    </div>
+    <div>
+      <div id="lightsDiv">
+        <p>
+          Lights:
+        </p>
+      </div>
+      <div>
+        <label for="velCamera">Select camera velocity</label>
+        <input type="range" id="velCamera" min="0.01" max="0.1" step="0.005"/>
+      </div>
+
+      <div id="poiSettings">
+        <div>
+          <button id="poiButton" onclick="addPoi()">Add Poi</button>
+          <input id="poiText" type="text" placeholder="enter the name of the poi" value="Initial Position">
+        </div>
+  
+  
+        <div>
+          <label for="poiSelector">Select a POI to go to</label>
+          <select id="poiSelector">
+            
+          </select>
+          <button id="poiSelectButton" onclick="goToPoi()">Go</button>
+        </div>
+        <div>
+          <button id="poiAnimationButton" onclick="playAnimation()">Play animation interpolating between pois</button>
+        </div>
+      </div>
+
+
+
+      <div>
+        <button id="startGameButton" onclick="startGame()">Start zombie game</button>
+      </div>
+
+      <div style="margin-top: 20px; margin-left: 10px; background-color: aliceblue;">
+        <h1> Comentaris</h1>
+        <div style="margin-left: 10px; ">
+          <h1 style="border-style: outset; background-color: rgb(184, 218, 231);">Comentaris Pràctica Important!!</h1>
+          <p>-No hi ha manera de que pugui carregar les textures sense que em doni error. Amb un servidor local, que és com treballo funciona, pero sense, he provat mil maneres i no va.  </p>
+          <p>-He deixat captures de pantalla perquè es pugui veure el resultat per si no ho volguessis executar en un live server</p>
+          <p>-He deixat un README amb els passos per obrir un servidor local i executar-ho</p>
+          <h1 style="border-style: outset; background-color: rgb(184, 218, 231);">Comentaris Interacció</h1>
+          <p>-S'ha de clicar al canvas per a poder interactuar (això bloquejarà el ratolí)</p>
+          <p>-Si es vol sortir del bloqueig, apretar tecla esc</p>
+          <p style="font-weight: bold;">-Dins del bloqueig:</p>
+          <div style="margin-left: 10px;">
+            <p>-Usar "w" per moures endavant</p>
+            <p>-Usar "s" per moures enrere</p>
+            <p>-Usar "a" per moures a l'esquerre</p>
+            <p>-Usar "d" per moures a la dreta</p>
+            <p>-Moure el ratolí per girar la càmera</p>
+          </div>
+          <p style="font-weight: bold;">-Botons interacció</p>
+          <div style="margin-left: 10px;">
+            <p>-Display type serveix per canviar el mode de pintat (no es recomana canviar ja que el rendiment baixarà molt)</p>
+            <p>-Slider per canviar velocitat de la càmera</p>
+            <p>-Si es clica "add Poi" s'afegirà un punt d'interés amb la posició actual de la càmera i el nom que hi hagi al input del costat</p>
+            <p>-Si es selecciona un Poi i es clica "Go" la càmera es teletransportarà a aquella posició</p>
+            <p>-Si es clica "Play animation interpolating..." la càmera farà una animació interpolant entre POIs (en ordre cronològic d'inserció començant per la Initial Position de la càmera)</p>
+            <p>-Si es clica "Start zombie game" es començarà el joc, sempre es pot parar clicant "stop" que apareixerà un cop començat</p>
+          </div>
+          <p style="font-weight: bold;">-Joc zombies</p>
+          <div style="margin-left: 10px;">
+            <p>-El joc tracta de que van apareixent onades de zombies i els has de matar abans de que arribin al centre de l'escena</p>
+            <p>-Si un zombie arriba al centre de l'escena perds</p>
+            <p>-Per matar un zombie has de disparar-li al cap 3 vegades. Es dispara amb clic esquerre del ratolí</p>
+            <p>-Durant el joc la càmera no és lliure ja que no et pots moure ni amunt ni avall</p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    
+
+    <script src="gl-matrix-min.js"></script>
+    <script src="textures.js"></script>
+    <script src="materiales.js"></script>
+    <script src="JsonObjects/primitiveCampfire.js"></script>
+    <script src="JsonObjects/primitiveRockA.js"></script>
+    <script src="JsonObjects/primitiveRockB.js"></script>
+    <script src="JsonObjects/primitiveRockC.js"></script>
+    <script src="JsonObjects/primitiveTentClosed.js"></script>
+    <script src="JsonObjects/primitiveTree.js"></script>
+    <script src="JsonObjects/primitiveStreetLamp.js"></script>
+    <script src="JsonObjects/primitiveZombie.js"></script>
+    <script src="primitivasG.js"></script>
+    <script src="vectorOperations.js"></script>
+    <script src="sceneObject.js"></script>
+    <script src="zombie.js"></script>
+    <script src="main.js"></script>
+
+  </body>
+
+</html>
