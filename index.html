@@ -205,7 +205,7 @@
               result += phong(N, V, L, Lights[i+1],Lights[i+2],Lights[i+3]);
           }
   
-          fragmentColor= texture(myTexture, texCoords * repetition)  * vec4 (result, 1.0) * 1.6;
+          fragmentColor= texture(myTexture, texCoords * repetition)  * vec4 (result, 1.0);
         }
 
 
@@ -305,6 +305,7 @@
     <script src="textures.js"></script>
     <script src="materiales.js"></script>
     <script src="JsonObjects/primitiveCampfire.js"></script>
+    <script src="JsonObjects/primitiveCupula.js"></script>
     <script src="JsonObjects/primitiveRockA.js"></script>
     <script src="JsonObjects/primitiveRockB.js"></script>
     <script src="JsonObjects/primitiveRockC.js"></script>

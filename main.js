@@ -549,19 +549,20 @@ function addLight(x,y,z){
   let streetLampInstance=new SceneObject(White_plastic,primitivasJson.exampleStreetLamp,Textures.data.metal.texture,1);
   streetLampInstance.translate(x,y,z);
   streetLampInstance.scale(0.12,0.12,0.12);
+  let lightIndicator=new SceneObject(Yellow_plastic,exampleCube,Textures.data.white.texture,1);
+  lightIndicator.translate(x+0.01,y+1.4,z+0.02);
+  lightIndicator.scale(0.18,0.18,0.18);
+  Scene.objects.push(lightIndicator);
   Scene.lights.data.push({
-    Position: [x,y+1.4,z],
+    Position: [x+0.01,y+1.4,z+0.02],
     La: [0.3, 0.3, 0.3],
     Ld: [0.3, 0.3, 0.3],
     Ls: [0.3, 0.3, 0.3],
     ences: true,
+    indicator: lightIndicator,
   });
   Scene.objects.push(streetLampInstance);
 
-  let lightIndicator=new SceneObject(Yellow_plastic,exampleCube,Textures.data.white.texture,1);
-  lightIndicator.translate(x,y+1.4,z);
-  lightIndicator.scale(0.2,0.2,0.2);
-  Scene.objects.push(lightIndicator);
 }
 
 //Creacio de l'escena -----------------------------------------------------------------------
@@ -575,9 +576,9 @@ function composeScene(){
   Scene.objects.push(surface);
 
 
-  let sky=new SceneObject(White_plastic ,examplePlane, Textures.data.grass.texture,20,true);
-  sky.scale(100,1,100);
-  sky.translate(0,20,0);
+  let sky=new SceneObject(White_plastic ,primitivasJson.exampleCupula, Textures.data.grass.texture,20,true);
+  sky.rotate(Math.PI,0,1,0);
+  sky.scale(1.3,1.3,1.3);
   Scene.objects.push(sky);
 
   let tentClosed1=new SceneObject(White_plastic,primitivasJson.exampleTentClosed,Textures.data.cloth3.texture,0.05);
@@ -604,17 +605,29 @@ function composeScene(){
 
 }
 
+function rgbToHex(r, g, b) {
+
+  r = Math.round(r * 255);
+  g = Math.round(g * 255);
+  b = Math.round(b * 255);
+
+  r = Math.min(255, Math.max(0, r));
+  g = Math.min(255, Math.max(0, g));
+  b = Math.min(255, Math.max(0, b));
+
+  const hex = ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+
+  return `#${hex.toUpperCase()}`;
+}
+
 function hexToRgb(hex) {
-  // Elimina el caracter '#' si está presente
   hex = hex.replace(/^#/, '');
 
-  // Divide el color en componentes RGB
   const bigint = parseInt(hex, 16);
   const r = ((bigint >> 16) & 255) / 255;
   const g = ((bigint >> 8) & 255) / 255;
   const b = (bigint & 255) / 255;
 
-  // Devuelve el resultado en formato RGB
   return [r,g,b];
 }
 
@@ -665,7 +678,7 @@ function initHandlers() {
     const inputLa = document.createElement("input");
     inputLa.type = "color";
     inputLa.name = "La";
-    inputLa.value = "#ffffff";
+    inputLa.value = rgbToHex(...Scene.lights.data[i].La);
     inputLa.addEventListener("change", function (event) {
       const newValue = event.target.value;
       Scene.lights.data[i].La=hexToRgb(newValue);
@@ -677,7 +690,7 @@ function initHandlers() {
     const inputLd = document.createElement("input");
     inputLd.type = "color";
     inputLd.name = "Ld";
-    inputLd.value = "#ffffff";
+    inputLd.value = rgbToHex(...Scene.lights.data[i].Ld);
     inputLd.addEventListener("change", function (event) {
       const newValue = event.target.value;
       Scene.lights.data[i].Ld=hexToRgb(newValue);
@@ -689,7 +702,7 @@ function initHandlers() {
     const inputLs = document.createElement("input");
     inputLs.type = "color";
     inputLs.name = "Ls";
-    inputLs.value = "#ffffff";
+    inputLs.value = rgbToHex(...Scene.lights.data[i].Ls);
     inputLs.addEventListener("change", function (event) {
       const newValue = event.target.value;
       Scene.lights.data[i].Ls=hexToRgb(newValue);
@@ -701,11 +714,17 @@ function initHandlers() {
 
     const inputEncendre = document.createElement("input");
     inputEncendre.type = "checkbox";
-    inputEncendre.checked=true;
+    inputEncendre.checked=Scene.lights.data[i].ences;
     inputEncendre.name = "encendre";
     inputEncendre.addEventListener("change", function (event) {
-      if(event.target.checked==true) Scene.lights.data[i].ences=true;
-      else Scene.lights.data[i].ences=false;
+      if(event.target.checked==true){
+        Scene.lights.data[i].ences=true;
+        Scene.lights.data[i].indicator.material=Yellow_plastic;
+      } 
+      else{
+        Scene.lights.data[i].ences=false;
+        Scene.lights.data[i].indicator.material=Obsidian;
+      } 
       setShaderLight();
     });
     lightElement.appendChild(document.createTextNode("Encès: "));

@@ -270,5 +270,6 @@ var primitivasJson = {
   exampleCampfire: campfire,
   exampleZombie: zombie,
   exampleStreetLamp: streetLamp,
+  exampleCupula: cupula,
 }
 
