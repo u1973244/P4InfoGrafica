@@ -40,7 +40,7 @@ class Zombie{ //clase que gestiona els zombies del joc
             if(this.health<=0) return true;
             else{
                 switch(this.health){
-                    case 2: this.model.material=White_rubber;
+                    case 2: this.model.material=Obsidian;
                         break;
                     case 1:this.model.material=Black_rubber;
                         break;

@@ -19,6 +19,13 @@ var Polished_bronze = {
   "mat_specular": [ 0.774597, 0.458561, 0.200621 ],
   "alpha"       : [ 76.8 ]
 };
+
+var LightMaterial = {
+  "mat_ambient": [0.8, 0.8, 0.0],   
+  "mat_diffuse": [0.9, 0.9, 0.0],     
+  "mat_specular": [0.7, 0.7, 0.0],     
+  "alpha": [10.0 ]                        
+};
           
 var Chrome = {
   "mat_ambient" : [ 0.25, 0.25, 0.25 ],
@@ -149,8 +156,8 @@ var Red_plastic = {
 var White_plastic = {
   "mat_ambient" : [ 0.0,0.0,0.0 ],
   "mat_diffuse" : [ 0.55,0.55,0.55 ],
-  "mat_specular": [ 0.70,0.70,0.70 ],
-  "alpha"       : [ 32.0 ]
+  "mat_specular": [ 0.1,0.1,0.1 ],
+  "alpha"       : [ 10.0 ]
 };
           
 var Yellow_plastic = {

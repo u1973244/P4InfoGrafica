@@ -9,6 +9,7 @@ const HTMLStartGameButton = document.getElementById("startGameButton");
 const HTMLpunter = document.getElementById('punter');
 const HTMLvelocityRange= document.getElementById('velCamera');
 const HTMLlights = document.getElementById("lightsDiv");
+const HTMLshaderType = document.getElementById("ShaderType");
 
 
 
@@ -73,6 +74,9 @@ function initShaders() {
     program.useProcedural               = gl.getUniformLocation( program, "Procedural");
     gl.uniform1i(program.useProcedural , 0);
 
+    //Tipus shader
+    program.shaderType               = gl.getUniformLocation( program, "ShaderType");
+    gl.uniform1i(program.shaderType , 0);
 }
 
 function initRendering() {
@@ -155,6 +159,10 @@ function setShaderLight() {
 
   gl.uniform3fv(program.Lights, flattenLights(lightsGlobalPos));
   
+}
+
+function setShaderType(type){
+  gl.uniform1i(program.shaderType,type);
 }
 
 
@@ -549,7 +557,7 @@ function addLight(x,y,z){
   let streetLampInstance=new SceneObject(White_plastic,primitivasJson.exampleStreetLamp,Textures.data.metal.texture,1);
   streetLampInstance.translate(x,y,z);
   streetLampInstance.scale(0.12,0.12,0.12);
-  let lightIndicator=new SceneObject(Yellow_plastic,exampleCube,Textures.data.white.texture,1);
+  let lightIndicator=new SceneObject(LightMaterial,exampleCube,Textures.data.white.texture,1);
   lightIndicator.translate(x+0.01,y+1.4,z+0.02);
   lightIndicator.scale(0.18,0.18,0.18);
   Scene.objects.push(lightIndicator);
@@ -719,7 +727,7 @@ function initHandlers() {
     inputEncendre.addEventListener("change", function (event) {
       if(event.target.checked==true){
         Scene.lights.data[i].ences=true;
-        Scene.lights.data[i].indicator.material=Yellow_plastic;
+        Scene.lights.data[i].indicator.material=LightMaterial;
       } 
       else{
         Scene.lights.data[i].ences=false;
@@ -733,7 +741,10 @@ function initHandlers() {
     HTMLlights.appendChild(lightElement);
   }
 
-  document.getElementsByClassName
+  HTMLshaderType.addEventListener("change", function() {
+    setShaderType(parseInt(HTMLshaderType.value));
+  });
+
 }      
 
 

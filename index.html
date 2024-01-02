@@ -166,7 +166,9 @@
 
 
       vec3 phong(vec3 N, vec3 V, vec3 L, vec3 La, vec3 Ld, vec3 Ls, float distance) {
-        vec3 ambient = Material.Ka * La;
+        
+        float attenuation = 1.0 / (1.0 + 0.2 * distance + 0.02 * distance * distance); // calculo atenuació
+        vec3 ambient = Material.Ka * La*attenuation;
         vec3 diffuse = vec3(0.0);
         vec3 specular = vec3(0.0);
     
@@ -176,40 +178,75 @@
             vec3 R = reflect(-L, N);
             float RdotV_n = pow(max(0.0, dot(R, V)), Material.alpha);
 
-            float attenuation = 1.0 / (1.0 + 0.1 * distance + 0.01 * distance * distance); // calculo atenuació
-
             diffuse = NdotL * (Ld * Material.Kd)*attenuation;
             specular = RdotV_n * (Ls * Material.Ks)*attenuation;
         }
         return (ambient + diffuse + specular);
       }
 
+      vec3 toonShading ( vec3 N, vec3 L, vec3 La, vec3 Ld) {
+        vec3 ambient = Material.Ka * La;
+        float NdotL = max (0.0, dot (N, L));
+        float levels = 3.0;
+        float scaleFactor = 1.0 / levels;
+        vec3 diffuse = ceil ( NdotL * levels ) * scaleFactor * ( Ld * Material.Kd);
+        return (ambient+diffuse);
+      }
+
+      uniform int ShaderType;
 
       in vec3 N, ec;
       out vec4 fragmentColor;
       
+
+
+
+
       void main ( ) {
         if(Procedural==1){//faig que no afecti la llum ja que és el cel i no té gaire sentit que l'ilumini un fanal
           
           vec3 aux=vec3 (texCoords,0.0)*10.0;
 
           float s     = snoise( aux) * 0.5 + 0.5;
-          vec3  newKd = mix (vec3(0.15,0.15,0.35), vec3(0.1,0.05,0.05), s);
+          vec3  newKd = mix (vec3(0.05,0.05,0.15), vec3(0.05,0.0,0.0), s);
 
           fragmentColor = vec4( newKd, 1.0);
         }
         else{
-          vec3 result = vec3(0.0);
-          vec3 V = normalize (-ec);
-
+          if(ShaderType==0){ // phong amb atenuació
+            vec3 result = vec3(0.0);
+            vec3 V = normalize (-ec);
   
-          for (int i = 0; i < nLights*4; i+=4) { // recorro cada llum. i=posicio, i+1=La, i+2=Ld, i+3=Ls
-              vec3 L = normalize ( Lights[i] - ec);
-              float distance = length(Lights[i] - ec); //afegeixo un parametre distancia a phong per a calcular atenuació així els fragments tenen menys iluminacio si estàn més lluny
-              result += phong(N, V, L, Lights[i+1],Lights[i+2],Lights[i+3],distance);
+    
+            for (int i = 0; i < nLights*4; i+=4) { // recorro cada llum. i=posicio, i+1=La, i+2=Ld, i+3=Ls
+                vec3 L = normalize ( Lights[i] - ec);
+                float distance = length(Lights[i] - ec); //afegeixo un parametre distancia a phong per a calcular atenuació així els fragments tenen menys iluminacio si estàn més lluny
+                result += phong(N, V, L, Lights[i+1],Lights[i+2],Lights[i+3],distance);
+            }
+    
+            fragmentColor= texture(myTexture, texCoords * repetition)  * vec4 (result, 1.0)*1.2;
           }
+          else if(ShaderType==1){ // phong sense atenuacio
+            vec3 result = vec3(0.0);
+            vec3 V = normalize (-ec);
   
-          fragmentColor= texture(myTexture, texCoords * repetition)  * vec4 (result, 1.0);
+    
+            for (int i = 0; i < nLights*4; i+=4) { // recorro cada llum. i=posicio, i+1=La, i+2=Ld, i+3=Ls
+                vec3 L = normalize ( Lights[i] - ec);
+                result += phong(N, V, L, Lights[i+1],Lights[i+2],Lights[i+3],0.0);
+            }
+    
+            fragmentColor= texture(myTexture, texCoords * repetition)  * vec4 (result, 1.0);
+          }
+          else{ // toon shader
+            vec3 result=vec3(0.0);
+            vec3 n = normalize (N);
+            for(int i=0; i < nLights*4; i+=4){
+              vec3 L = normalize ( Lights[i] - ec);
+              result+=toonShading (n ,L,Lights[i+1],Lights[i+2]);
+            }
+            fragmentColor = vec4 (result ,1.0);
+          }
         }
 
 
@@ -230,6 +267,14 @@
       </canvas>
     </div>
     <div>
+      <div>
+        <label for="ShaderType">Select the shader</label>
+        <select id="ShaderType">
+          <option value="0">Phong with light attenuation</option>
+          <option value="1">Normal Phong</option>
+          <option value="2">Toon Black and White</option>
+        </select>
+      </div>
       <div id="lightsDiv">
         <p>
           Lights:
@@ -270,8 +315,9 @@
         <div style="margin-left: 10px; ">
           <h1 style="border-style: outset; background-color: rgb(184, 218, 231);">Comentaris Pràctica Important!!</h1>
           <p>-No hi ha manera de que pugui carregar les textures sense que em doni error. Amb un servidor local, que és com treballo funciona, pero sense, he provat mil maneres i no va.  </p>
-          <p>-He deixat captures de pantalla perquè es pugui veure el resultat per si no ho volguessis executar en un live server</p>
-          <p>-He deixat un README amb els passos per obrir un servidor local i executar-ho</p>
+          <p>-He deixat un enllaç a un github pages on tinc aquesta pràctica, perquè es pugui veure el funcionament</p>
+          <p>-El toon Shader és en blanc i negre perquè he utilitzat el mateix material blanc per quasi tot ja que sino les textures quedaven malament</p>
+          <p>-A part per si volguéssis comprovar per tu mateix, he deixat els passos per usar servidor local, pero és el mateix que ara que està penjada al github</p>
           <h1 style="border-style: outset; background-color: rgb(184, 218, 231);">Comentaris Interacció</h1>
           <p>-S'ha de clicar al canvas per a poder interactuar (això bloquejarà el ratolí)</p>
           <p>-Si es vol sortir del bloqueig, apretar tecla esc</p>
@@ -285,6 +331,8 @@
           </div>
           <p style="font-weight: bold;">-Botons interacció</p>
           <div style="margin-left: 10px;">
+            <p>-Select the shader serveix per canviar el shader que s'està utilitzant pel calcul d'il.luminació</p>
+            <p>-A lights hi ha una llista de les llums de l'escena i els seus diferents components per si es volen modificar, també es poden encendre i apagar</p>
             <p>-Display type serveix per canviar el mode de pintat (no es recomana canviar ja que el rendiment baixarà molt)</p>
             <p>-Slider per canviar velocitat de la càmera</p>
             <p>-Si es clica "add Poi" s'afegirà un punt d'interés amb la posició actual de la càmera i el nom que hi hagi al input del costat</p>
