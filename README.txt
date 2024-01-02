@@ -1,4 +1,5 @@
-Aquí els passos per a poder obrir servidor local.
+La pràctica està penjada i funciona al següent enllaç https://u1973244.github.io/P4InfoGrafica/
+Per si ho volguéssis comprovat per tu mateix aquí els passos per a poder obrir servidor local.
 Es necessita tenir Node.js instalat prèviament, en cas que no es tingui: https://nodejs.org/en  es pot instalar des d'aquí
 1- Obra un terminal i navega fins la carpeta on estan aquests arxius
 2- Instala el servidor local executant la seguent comanda:
