@@ -555,9 +555,9 @@ function addLight(x,y,z){
   Scene.objects.push(lightIndicator);
   Scene.lights.data.push({
     Position: [x+0.01,y+1.4,z+0.02],
-    La: [0.3, 0.3, 0.3],
-    Ld: [0.3, 0.3, 0.3],
-    Ls: [0.3, 0.3, 0.3],
+    La: [0.9, 0.9, 0.9],
+    Ld: [0.9, 0.9, 0.9],
+    Ls: [0.9, 0.9, 0.9],
     ences: true,
     indicator: lightIndicator,
   });
